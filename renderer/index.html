@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WA Bulk Sender</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: #075e54;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .sidebar-header { padding: 20px; background: #054d44; text-align: center; }
+    .sidebar-header h2 { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+    .sidebar-header p { font-size: 11px; opacity: 0.7; margin-top: 4px; }
+    .nav-item {
+      padding: 14px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.1); }
+    .nav-item.active { background: rgba(255,255,255,0.15); border-left-color: #25d366; }
+    .sidebar-footer { margin-top: auto; padding: 16px; font-size: 11px; opacity: 0.5; text-align: center; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100vh; }
+    .topbar {
+      background: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .topbar h3 { font-size: 16px; color: #333; }
+    .wa-status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+    .status-dot.connected { background: #25d366; }
+    .status-dot.connecting { background: #f39c12; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .card h4 {
+      font-size: 15px;
+      color: #333;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #075e54; color: white; }
+    .btn-primary:hover { background: #128c7e; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-success { background: #25d366; color: white; }
+    .btn-success:hover { background: #20b858; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-info { background: #2980b9; color: white; }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+    textarea, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid #e8e8e8;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+      font-family: 'Segoe UI', sans-serif;
+      margin-bottom: 16px;
+    }
+    textarea:focus, input:focus { border-color: #128c7e; }
+    textarea { resize: vertical; min-height: 100px; }
+    .qr-container { text-align: center; padding: 20px; }
+    .qr-instruction { font-size: 13px; color: #666; line-height: 1.6; }
+    .progress-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; margin: 12px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: #25d366; border-radius: 4px; transition: width 0.3s; width: 0%; }
+    .log-area {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 12px;
+      height: 180px;
+      overflow-y: auto;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .log-item { padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+    .log-item.success { color: #27ae60; }
+    .log-item.failed { color: #e74c3c; }
+    .stats-row { display: flex; gap: 16px; margin-bottom: 20px; }
+    .stat-card {
+      flex: 1;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stat-number { font-size: 32px; font-weight: 700; color: #075e54; }
+    .stat-label { font-size: 12px; color: #999; margin-top: 4px; }
+    .license-badge {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #2e7d32;
+    }
+    .two-col { display: flex; gap: 16px; }
+    .two-col > div { flex: 1; }
+    .contact-textarea {
+      width: 100%;
+      min-height: 160px;
+      padding: 10px 14px;
+      border: 2px solid #e8e8e8;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      resize: vertical;
+      font-family: monospace;
+      margin-bottom: 8px;
+    }
+    .contact-textarea:focus { border-color: #128c7e; }
+    .attach-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .attach-btn {
+      padding: 8px 14px;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      background: #fafafa;
+      cursor: pointer;
+      font-size: 12px;
+      color: #555;
+      transition: all 0.2s;
+    }
+    .attach-btn:hover { border-color: #128c7e; color: #128c7e; background: #f0faf9; }
+    .attach-btn.selected { border-color: #25d366; color: #25d366; background: #f0fff4; border-style: solid; }
+    .attach-preview {
+      background: #f0f9ff;
+      border: 1px solid #b3d9f7;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #2980b9;
+      margin-bottom: 12px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .attach-preview.show { display: flex; }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 12px;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .report-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .report-table tr:hover td { background: #fafafa; }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-success { background: #e8f5e9; color: #27ae60; }
+    .badge-failed { background: #fdecea; color: #e74c3c; }
+    .report-detail { display: none; margin-top: 16px; }
+    .report-detail.show { display: block; }
+    .detail-log {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .hint-box {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #795548;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>💬 WA Bulk Sender</h2>
+      <p>PSP Softech</p>
+    </div>
+    <div class="nav-item active" onclick="showPanel('dashboard', this)">📊 Dashboard</div>
+    <div class="nav-item" onclick="showPanel('whatsapp', this)">📱 WhatsApp Connect</div>
+    <div class="nav-item" onclick="showPanel('sender', this)">📤 Message Sender</div>
+    <div class="nav-item" onclick="showPanel('chats', this)">💬 Chats</div>
+	  <div class="nav-item" onclick="showPanel('scheduler', this)">⏰ Scheduler</div>
+	  <div class="nav-item" onclick="showPanel('groups', this)">👥 Group Sender</div>
+    <div class="nav-item" onclick="showPanel('reports', this)">📋 Reports</div>
+    <div class="nav-item" onclick="showPanel('settings', this)">⚙️ Settings</div>
+    <div class="sidebar-footer" style="opacity:1; padding:16px; border-top:1px solid rgba(255,255,255,0.15);">
+      <img src="../assets/psp-logo.jpg" style="width:80px; margin-bottom:10px; border-radius:8px; display:block; margin-left:auto; margin-right:auto;" onerror="this.style.display='none'">
+      <div style="font-size:13px; font-weight:700; color:white; margin-bottom:6px;">PSP Softech</div>
+      <div style="font-size:11px; color:rgba(255,255,255,0.75); margin-bottom:4px;">📧 support@pspsoftech.com</div>
+      <div style="font-size:11px; color:rgba(255,255,255,0.75); margin-bottom:10px;">🌐 https://www.pspsoftech.com</div>
+      <div style="font-size:10px; color:rgba(255,255,255,0.4);">v1.1.0 &copy; 2026</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <h3 id="pageTitle">Dashboard</h3>
+      <div class="wa-status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Dashboard -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-number" id="statTotal">0</div>
+            <div class="stat-label">Total Sent</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statSuccess" style="color:#25d366">0</div>
+            <div class="stat-label">Successful</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statFailed" style="color:#e74c3c">0</div>
+            <div class="stat-label">Failed</div>
+          </div>
+        </div>
+        <div class="card">
+          <h4>🔑 License Info</h4>
+          <div class="license-badge" id="licenseBadge">Loading...</div>
+        </div>
+        <div class="card">
+          <h4>📋 How to Use</h4>
+          <ol style="padding-left:20px; line-height:2.2; font-size:14px; color:#555;">
+            <li>Go to <b>WhatsApp Connect</b> and scan the QR code</li>
+            <li>Go to <b>Message Sender</b> and enter numbers and message</li>
+            <li>You can import contacts via CSV with name included</li>
+            <li>Use <b>{name}</b> in message to auto-replace with contact name</li>
+            <li>You can attach Image, Video, or Document</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- WhatsApp Connect -->
+      <div class="panel" id="panel-whatsapp">
+        <div class="card">
+          <h4>📱 WhatsApp Connection</h4>
+          <div class="qr-container">
+            <div id="qrSection">
+              <p class="qr-instruction">Click the Connect button and scan the QR code from WhatsApp.</p>
+              <br>
+              <canvas id="qrImage" style="display:none; margin:0 auto;"></canvas>
+              <p id="qrWaiting" style="color:#f39c12; font-size:13px; display:none; margin-top:12px;">Loading QR Code...</p>
+            </div>
+            <div id="connectedSection" style="display:none;">
+              <div style="font-size:60px;">✅</div>
+              <p style="color:#27ae60; font-size:16px; font-weight:600; margin:10px 0;">WhatsApp Connected!</p>
+              <p style="color:#888; font-size:13px;">You can now send messages.</p>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:16px;">
+            <button class="btn btn-primary" id="connectBtn" onclick="connectWA()">🔗 Connect</button>
+            <button class="btn btn-danger" id="disconnectBtn" style="display:none; margin-left:10px;" onclick="disconnectWA()">❌ Disconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Sender -->
+      <div class="panel" id="panel-sender">
+        <div class="two-col">
+          <div>
+            <div class="card">
+              <h4>📞 Recipients</h4>
+              <div class="hint-box">
+                📌 <b>Manual:</b> One number per line. e.g. <code>919876543210</code><br>
+                📌 <b>With Name:</b> <code>Raman,919876543210</code><br>
+                📌 <b>CSV Import</b> will auto-fill this list.
+              </div>
+              <textarea class="contact-textarea" id="contactNumbers" placeholder="919876543210&#10;Raman,919876543210&#10;Raghav,919876543210"></textarea>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span id="contactCount" style="font-size:13px; color:#888;">0 numbers</span>
+                <button class="btn btn-primary btn-sm" onclick="countContacts()">Count</button>
+                <button class="btn btn-info btn-sm" onclick="importCSV()">📂 Import CSV</button>
+                <button class="btn btn-warning btn-sm" onclick="clearContacts()">🗑 Clear</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <h4>✉️ Message Composer</h4>
+              <div class="hint-box">
+                💡 Use <b>{name}</b> to auto-replace with each contact's name.<br>
+                💡 Use <b>{option one|option two}</b> for random text variation, e.g. <i>{Hi|Hello} {name}!</i>
+              </div>
+              <label>Message</label>
+              <textarea id="messageText" placeholder="Hello {name}, we have a special offer for you!"></textarea>
+              <label>Attachment</label>
+              <div class="attach-row">
+                <div class="attach-btn" id="attachImage" onclick="pickAttachment('image')">🖼 Image</div>
+                <div class="attach-btn" id="attachVideo" onclick="pickAttachment('video')">🎬 Video</div>
+                <div class="attach-btn" id="attachDoc" onclick="pickAttachment('document')">📄 Document</div>
+                <div class="attach-btn" onclick="clearAttachment()">❌ Clear</div>
+              </div>
+              <div class="attach-preview" id="attachPreview">
+                <span id="attachName">No file selected</span>
+                <button class="btn btn-danger btn-sm" onclick="clearAttachment()">Remove</button>
+              </div>
+              <label>Delay range (seconds) — randomized between messages</label>
+              <div style="display:flex; gap:10px;">
+                <input type="number" id="delayMin" value="3" min="1" max="120" placeholder="Min" style="width:50%;">
+                <input type="number" id="delayMax" value="8" min="1" max="120" placeholder="Max" style="width:50%;">
+              </div>
+              <p id="sendLimitStatus" style="font-size:12px; color:#888; margin:8px 0;">📊 Loading daily send status…</p>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-success" id="sendBtn" onclick="sendMessages()" style="flex:1; padding:13px; font-size:15px;">📤 Send Messages</button>
+                <button class="btn btn-danger" id="stopBtn" onclick="stopSending()" style="display:none; padding:13px 20px; font-size:15px;">⏹ Stop</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h4>📊 Sending Progress</h4>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <p id="progressText" style="font-size:13px; color:#888; margin-bottom:12px;">Waiting...</p>
+          <div class="log-area" id="logArea"></div>
+        </div>
+      </div>
+
+<!-- Chats -->
+      <div class="panel" id="panel-chats">
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="display:flex; height:calc(100vh - 150px); min-height:400px;">
+            <!-- Chat list -->
+            <div style="width:280px; min-width:280px; border-right:1px solid #f0f0f0; display:flex; flex-direction:column;">
+              <div style="padding:14px 16px; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; justify-content:space-between;">
+                <b style="font-size:14px; color:#333;">Chats</b>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn btn-success btn-sm" onclick="startNewChat()" title="Start a new chat">+ New</button>
+                  <button class="btn btn-info btn-sm" onclick="loadChatList()" title="Reload chat list from local data">🔄</button>
+                </div>
+              </div>
+              <div style="padding:10px 16px; border-bottom:1px solid #f0f0f0;">
+                <input type="text" id="chatSearchInput" placeholder="🔍 Search chats..." oninput="renderChatList()" style="margin-bottom:0; padding:8px 12px; font-size:13px;">
+              </div>
+              <div id="chatListArea" style="flex:1; overflow-y:auto;">
+                <p style="color:#888; font-size:13px; padding:16px;">Connect WhatsApp first.</p>
+              </div>
+            </div>
+            <!-- Conversation -->
+            <div style="flex:1; display:flex; flex-direction:column; background:#f7f8fa;">
+              <div id="chatConvHeader" style="padding:14px 16px; border-bottom:1px solid #f0f0f0; background:white; font-size:14px; font-weight:600; color:#333; display:flex; align-items:center; gap:10px;">
+                <div id="chatConvAvatar" style="width:32px; height:32px; border-radius:50%; background:#128c7e; color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex-shrink:0;"></div>
+                <span id="chatConvName">Select a chat</span>
+              </div>
+              <div id="chatMessagesArea" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:8px;"></div>
+              <div style="padding:12px 16px; border-top:1px solid #f0f0f0; background:white;">
+                <div id="chatAttachPreview" style="display:none; align-items:center; justify-content:space-between; background:#f0f9ff; border:1px solid #b3d9f7; border-radius:8px; padding:8px 12px; font-size:12px; color:#2980b9; margin-bottom:8px;">
+                  <span id="chatAttachName"></span>
+                  <button class="btn btn-danger btn-sm" onclick="clearChatAttachment()">Remove</button>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-info btn-sm" onclick="pickChatAttachment()" title="Attach image" style="flex-shrink:0;">🖼</button>
+                  <input type="text" id="chatReplyText" placeholder="Type a message..." style="flex:1; margin-bottom:0; padding:10px 14px;" onkeypress="if(event.key==='Enter'){event.preventDefault(); sendChatReply();}">
+                  <button class="btn btn-success btn-sm" id="chatSendBtn" onclick="sendChatReply()" style="flex-shrink:0;">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+<!-- Group Sender -->
+      <div class="panel" id="panel-groups">
+        <div class="two-col">
+          <div>
+            <div class="card">
+              <h4>👥 Select Groups</h4>
+              <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <button class="btn btn-primary btn-sm" onclick="loadGroups()">🔄 Refresh Groups</button>
+                <button class="btn btn-info btn-sm" onclick="selectAllGroups()">Select All</button>
+                <button class="btn btn-warning btn-sm" onclick="deselectAllGroups()">Deselect All</button>
+              </div>
+              <div id="groupList" style="max-height:350px; overflow-y:auto; border:2px solid #e8e8e8; border-radius:8px; padding:8px;">
+                <p style="color:#888; font-size:13px; padding:8px;">Connect WhatsApp first, then click Refresh.</p>
+              </div>
+              <div style="margin-top:8px; font-size:13px; color:#888;">
+                <span id="selectedGroupCount">0 groups selected</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <h4>✉️ Message Composer</h4>
+              <div class="hint-box">
+                💡 This message will be sent to all selected groups.
+              </div>
+              <label>Message</label>
+              <textarea id="groupMessage" placeholder="Hello everyone! We have a special announcement..."></textarea>
+              <label>Attachment</label>
+              <div class="attach-row">
+                <div class="attach-btn" id="grpAttachImage" onclick="pickGroupAttachment('image')">🖼 Image</div>
+                <div class="attach-btn" id="grpAttachVideo" onclick="pickGroupAttachment('video')">🎬 Video</div>
+                <div class="attach-btn" id="grpAttachDoc" onclick="pickGroupAttachment('document')">📄 Document</div>
+                <div class="attach-btn" onclick="clearGroupAttachment()">❌ Clear</div>
+              </div>
+              <div class="attach-preview" id="grpAttachPreview">
+                <span id="grpAttachName">No file selected</span>
+                <button class="btn btn-danger btn-sm" onclick="clearGroupAttachment()">Remove</button>
+              </div>
+              <label>Delay between groups (seconds) — randomized</label>
+              <div style="display:flex; gap:10px;">
+                <input type="number" id="groupDelayMin" value="3" min="1" max="120" placeholder="Min" style="width:50%;">
+                <input type="number" id="groupDelayMax" value="8" min="1" max="120" placeholder="Max" style="width:50%;">
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-success" id="sendGroupBtn" onclick="sendGroupMessages()" style="flex:1; padding:13px; font-size:15px;">📤 Send to Groups</button>
+                <button class="btn btn-danger" id="stopGroupBtn" onclick="stopGroupSending()" style="display:none; padding:13px 20px; font-size:15px;">⏹ Stop</button>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div class="card">
+          <h4>📊 Sending Progress</h4>
+          <div class="progress-bar"><div class="progress-fill" id="groupProgressFill"></div></div>
+          <p id="groupProgressText" style="font-size:13px; color:#888; margin-bottom:12px;">Waiting...</p>
+          <div class="log-area" id="groupLogArea"></div>
+        </div>
+      </div>
+
+<!-- Scheduler -->
+      <div class="panel" id="panel-scheduler">
+        <div class="two-col">
+          <div>
+            <div class="card">
+              <h4>⏰ Schedule New Message</h4>
+              <div class="hint-box">
+                📌 One number per line. e.g. <code>919876543210</code><br>
+                📌 With Name: <code>Kartik,919876543210</code>
+              </div>
+              <label>Recipients</label>
+              <textarea class="contact-textarea" id="scheduleNumbers" placeholder="919876543210&#10;Kartik,919876543210"></textarea>
+              <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <button class="btn btn-info btn-sm" onclick="importScheduleCSV()">📂 Import CSV</button>
+                <button class="btn btn-warning btn-sm" onclick="document.getElementById('scheduleNumbers').value=''">🗑 Clear</button>
+              </div>
+              <label>Message</label>
+              <textarea id="scheduleMessage" placeholder="Hello {name}, scheduled message!"></textarea>
+              <label>Attachment (Optional)</label>
+              <div class="attach-row">
+                <div class="attach-btn" id="schedAttachImage" onclick="pickScheduleAttachment('image')">🖼 Image</div>
+                <div class="attach-btn" id="schedAttachVideo" onclick="pickScheduleAttachment('video')">🎬 Video</div>
+                <div class="attach-btn" id="schedAttachDoc" onclick="pickScheduleAttachment('document')">📄 Document</div>
+                <div class="attach-btn" onclick="clearScheduleAttachment()">❌ Clear</div>
+              </div>
+              <div class="attach-preview" id="schedAttachPreview">
+                <span id="schedAttachName">No file selected</span>
+                <button class="btn btn-danger btn-sm" onclick="clearScheduleAttachment()">Remove</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <h4>📅 Schedule Settings</h4>
+              <label>Schedule Name</label>
+              <input type="text" id="scheduleName" placeholder="e.g. Weekly Promotion">
+              <label>Date & Time</label>
+              <input type="datetime-local" id="scheduleDateTime" style="width:100%; padding:10px 14px; border:2px solid #e8e8e8; border-radius:8px; font-size:14px; outline:none; margin-bottom:16px;">
+              <label>Delay between messages (seconds) — randomized</label>
+              <div style="display:flex; gap:10px;">
+                <input type="number" id="scheduleDelayMin" value="3" min="1" max="120" placeholder="Min" style="width:50%;">
+                <input type="number" id="scheduleDelayMax" value="8" min="1" max="120" placeholder="Max" style="width:50%;">
+              </div>
+              <button class="btn btn-primary" id="scheduleBtn" onclick="createSchedule()" style="width:100%; padding:13px; font-size:15px;">⏰ Schedule Message</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4>📋 Scheduled Messages</h4>
+          <div id="scheduleList">
+            <p style="color:#888; font-size:13px;">No scheduled messages.</p>
+          </div>
+        </div>
+
+        <!-- Schedule Progress -->
+        <div class="card" id="scheduleProgressCard" style="display:none;">
+          <h4>📊 Schedule Running...</h4>
+          <div class="progress-bar"><div class="progress-fill" id="scheduleProgressFill"></div></div>
+          <p id="scheduleProgressText" style="font-size:13px; color:#888; margin-bottom:12px;">Please wait...</p>
+          <div class="log-area" id="scheduleLogArea"></div>
+        </div>
+      </div>
+	  
+      <!-- Reports -->
+      <div class="panel" id="panel-reports">
+        <div class="card">
+          <h4>📋 Sending Reports</h4>
+          <div id="reportList">
+            <p style="color:#888; font-size:13px;">No reports found.</p>
+          </div>
+        </div>
+        <div class="card report-detail" id="reportDetail">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h4 style="border:none; padding:0; margin:0;" id="reportDetailTitle">Report Details</h4>
+            <button class="btn btn-danger btn-sm" onclick="closeReportDetail()">Close</button>
+          </div>
+          <div class="detail-log" id="reportDetailLog"></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="panel" id="panel-settings">
+        <div class="card">
+          <h4>🔑 License Info</h4>
+          <div class="license-badge" id="licenseBadge2">Loading...</div>
+          <br>
+          <button class="btn btn-danger" onclick="deactivate()">Deactivate License</button>
+        </div>
+        <div class="card">
+          <h4>ℹ️ About</h4>
+          <div style="display:flex; align-items:center; gap:20px; padding:10px 0;">
+            <img src="../assets/psp-logo.png" style="width:80px; border-radius:10px;" onerror="this.style.display='none'">
+            <div>
+              <div style="font-size:18px; font-weight:700; color:#075e54; margin-bottom:4px;">WA Bulk Sender</div>
+              <div style="font-size:13px; color:#888; margin-bottom:10px;">Version 1.1.0</div>
+              <div style="font-size:13px; color:#555; margin-bottom:4px;">Developed by <b>PSP Softech</b></div>
+              <div style="font-size:13px; color:#555; margin-bottom:4px;">📧 support@pspsoftech.com</div>
+              <div style="font-size:13px; color:#555; margin-bottom:4px;">🌐 https://www.pspsoftech.com</div>
+              <div style="font-size:12px; color:#aaa; margin-top:8px;">&copy; 2026 All rights reserved.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  let isConnected = false;
+  let isSending = false;
+  let stats = { total: 0, success: 0, failed: 0 };
+  let currentAttachment = null;
+  let allReports = [];
+  let reportsPage = 1;
+  const REPORTS_PER_PAGE = 20;
+  let currentSession = null;
+  let allChats = [];
+  let currentChatJid = null;
+  let chatAttachment = null;
+  let chatHistorySyncedOnce = false;
+  
+
+  function showPanel(name, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    el.classList.add('active');
+    const titles = {
+      dashboard: 'Dashboard',
+      whatsapp: 'WhatsApp Connect',
+      sender: 'Message Sender',
+      chats: 'Chats',
+	    scheduler: 'Scheduler',
+	    groups: 'Group Sender',
+      reports: 'Reports',
+      settings: 'Settings'
+    };
+    document.getElementById('pageTitle').textContent = titles[name];
+    if (name === 'reports') loadReports();
+    if (name === 'scheduler') loadSchedules();
+	  if (name === 'groups') loadGroups();
+    if (name === 'chats') loadChatList();
+  }
+
+	// ─── Scheduler ───────────────────────────────────────────────
+  let scheduleAttachment = null;
+
+  async function importScheduleCSV() {
+    const result = await window.api.pickFile('csv');
+    if (!result) return;
+    const lines = result.content.trim().split('\n');
+    const contacts = [];
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      if (line.toLowerCase().includes('name') && line.toLowerCase().includes('number')) continue;
+      contacts.push(line);
+    }
+    document.getElementById('scheduleNumbers').value = contacts.join('\n');
+  }
+
+async function pickScheduleAttachment(type) {
+    const result = await window.api.pickFile(type);
+    if (!result) return;
+    if (result.error) { alert('❌ ' + result.error); return; }
+
+    if (result.files && result.files.length > 1) {
+      scheduleAttachment = { type, files: result.files, fileName: result.fileName };
+      document.getElementById('schedAttachName').textContent = `📎 ${result.files.length} files selected`;
+    } else {
+      scheduleAttachment = { type, filePath: result.filePath, fileName: result.fileName, files: result.files };
+      document.getElementById('schedAttachName').textContent = '📎 ' + result.fileName;
+    }
+    document.querySelectorAll('#schedAttachImage, #schedAttachVideo, #schedAttachDoc').forEach(b => b.classList.remove('selected'));
+    document.getElementById('schedAttach' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('selected');
+    document.getElementById('schedAttachPreview').classList.add('show');
+  }
+  
+
+  function clearScheduleAttachment() {
+    scheduleAttachment = null;
+    document.querySelectorAll('#schedAttachImage, #schedAttachVideo, #schedAttachDoc').forEach(b => b.classList.remove('selected'));
+    document.getElementById('schedAttachPreview').classList.remove('show');
+  }
+
+  async function createSchedule() {
+    const numbersRaw = document.getElementById('scheduleNumbers').value.trim();
+    const message = document.getElementById('scheduleMessage').value.trim();
+    const scheduleName = document.getElementById('scheduleName').value.trim();
+    const scheduleDateTime = document.getElementById('scheduleDateTime').value;
+    const delayMin = parseInt(document.getElementById('scheduleDelayMin').value) || 3;
+    const delayMax = Math.max(delayMin, parseInt(document.getElementById('scheduleDelayMax').value) || delayMin);
+
+    if (!numbersRaw) { alert('Please enter at least one number!'); return; }
+    if (!message && !scheduleAttachment) { alert('Please enter a message or add an attachment!'); return; }
+    if (!scheduleDateTime) { alert('Please select a date and time!'); return; }
+
+    const scheduledAt = new Date(scheduleDateTime).getTime();
+    if (scheduledAt <= Date.now()) { alert('Please select a future date and time!'); return; }
+
+    const contacts = parseContacts(numbersRaw);
+
+    const schedule = {
+      id: Date.now().toString(),
+      name: scheduleName || 'Schedule ' + new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      message,
+      contacts,
+      delayMin,
+      delayMax,
+      attachment: scheduleAttachment,
+      scheduledAt: new Date(scheduleDateTime).toISOString(),
+      createdAt: new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      status: 'pending'
+    };
+
+    await window.api.saveSchedule(schedule);
+
+    // Clear form
+    document.getElementById('scheduleNumbers').value = '';
+    document.getElementById('scheduleMessage').value = '';
+    document.getElementById('scheduleName').value = '';
+    document.getElementById('scheduleDateTime').value = '';
+    clearScheduleAttachment();
+
+    alert('✅ Message scheduled successfully!');
+    loadSchedules();
+  }
+
+  async function loadSchedules() {
+    const schedules = await window.api.getSchedules();
+    const container = document.getElementById('scheduleList');
+
+    if (!schedules || schedules.length === 0) {
+      container.innerHTML = '<p style="color:#888; font-size:13px;">No scheduled messages.</p>';
+      return;
+    }
+
+    const statusBadge = (status) => {
+      const map = {
+        pending: '<span class="badge" style="background:#fff3e0; color:#e65100;">⏳ Pending</span>',
+        completed: '<span class="badge badge-success">✅ Completed</span>',
+        cancelled: '<span class="badge" style="background:#f5f5f5; color:#999;">❌ Cancelled</span>',
+        failed: '<span class="badge badge-failed">⚠️ Failed</span>'
+      };
+      return map[status] || status;
+    };
+
+    let html = `<table class="report-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Scheduled At</th>
+          <th>Recipients</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    for (const s of schedules) {
+      const scheduledDate = new Date(s.scheduledAt).toLocaleString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      html += `<tr>
+        <td><b>${s.name}</b><br><span style="font-size:11px; color:#888;">${s.message.substring(0, 40)}${s.message.length > 40 ? '...' : ''}</span></td>
+        <td>${scheduledDate}</td>
+        <td>${s.contacts.length} numbers</td>
+        <td>${statusBadge(s.status)}</td>
+        <td>
+          ${s.status === 'pending' ? `<button class="btn btn-warning btn-sm" onclick="cancelSchedule('${s.id}')">Cancel</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteSchedule('${s.id}')" style="margin-left:4px;">Delete</button>
+        </td>
+      </tr>`;
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  async function cancelSchedule(id) {
+    if (confirm('Cancel this scheduled message?')) {
+      await window.api.cancelSchedule(id);
+      loadSchedules();
+    }
+  }
+
+  async function deleteSchedule(id) {
+    if (confirm('Delete this schedule?')) {
+      await window.api.deleteSchedule(id);
+      loadSchedules();
+    }
+  }
+
+  // Schedule events
+  window.api.onScheduleStarted((data) => {
+    document.getElementById('scheduleProgressCard').style.display = 'block';
+    document.getElementById('scheduleLogArea').innerHTML = '';
+    document.getElementById('scheduleProgressFill').style.width = '0%';
+    document.getElementById('scheduleProgressText').textContent = 'Starting...';
+    loadSchedules();
+  });
+
+  window.api.onScheduleMessageStatus((data) => {
+    const { number, name, status, index, total } = data;
+    const progress = Math.round(((index + 1) / total) * 100);
+    document.getElementById('scheduleProgressFill').style.width = progress + '%';
+    document.getElementById('scheduleProgressText').textContent = `${index + 1} of ${total} sent`;
+    const log = document.getElementById('scheduleLogArea');
+    const item = document.createElement('div');
+    item.className = 'log-item ' + status;
+    item.textContent = `${status === 'success' ? '✅' : '❌'} ${name ? name + ' - ' : ''}${number}`;
+    log.appendChild(item);
+    log.scrollTop = log.scrollHeight;
+  });
+
+  window.api.onScheduleCompleted((data) => {
+    document.getElementById('scheduleProgressText').textContent = `Completed! ✅ ${data.success} successful, ❌ ${data.failed} failed.`;
+    loadSchedules();
+  });
+  
+  // ─── Group Sender ───────────────────────────────────────────────
+  let groupAttachment = null;
+  let allGroups = [];
+  let selectedGroups = [];
+  let isGroupSending = false;
+
+  async function loadGroups() {
+    const container = document.getElementById('groupList');
+    container.innerHTML = '<p style="color:#888; font-size:13px; padding:8px;">Loading groups...</p>';
+
+    const result = await window.api.getGroups();
+    if (!result.success) {
+      container.innerHTML = `<p style="color:#e74c3c; font-size:13px; padding:8px;">❌ ${result.message || 'Failed to load groups. Make sure WhatsApp is connected.'}</p>`;
+      return;
+    }
+
+    allGroups = result.groups;
+    selectedGroups = [];
+    updateSelectedGroupCount();
+
+    if (allGroups.length === 0) {
+      container.innerHTML = '<p style="color:#888; font-size:13px; padding:8px;">No groups found.</p>';
+      return;
+    }
+
+    let html = '';
+    for (const g of allGroups) {
+      html += `
+        <div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #f0f0f0; cursor:pointer;" onclick="toggleGroup('${g.id}')" id="group-row-${g.id.replace('@', '_').replace('.', '_')}">
+          <input type="checkbox" id="group-${g.id.replace('@', '_').replace('.', '_')}" style="width:16px; height:16px; cursor:pointer;">
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600; color:#333;">${g.name}</div>
+            <div style="font-size:11px; color:#888;">${g.participants} participants</div>
+          </div>
+        </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  function toggleGroup(groupId) {
+    const safeId = groupId.replace('@', '_').replace('.', '_');
+    const checkbox = document.getElementById('group-' + safeId);
+    if (!checkbox) return;
+
+    checkbox.checked = !checkbox.checked;
+
+    if (checkbox.checked) {
+      const group = allGroups.find(g => g.id === groupId);
+      if (group && !selectedGroups.find(g => g.id === groupId)) {
+        selectedGroups.push(group);
+      }
+    } else {
+      selectedGroups = selectedGroups.filter(g => g.id !== groupId);
+    }
+    updateSelectedGroupCount();
+  }
+
+  function selectAllGroups() {
+    selectedGroups = [...allGroups];
+    allGroups.forEach(g => {
+      const safeId = g.id.replace('@', '_').replace('.', '_');
+      const checkbox = document.getElementById('group-' + safeId);
+      if (checkbox) checkbox.checked = true;
+    });
+    updateSelectedGroupCount();
+  }
+
+  function deselectAllGroups() {
+    selectedGroups = [];
+    allGroups.forEach(g => {
+      const safeId = g.id.replace('@', '_').replace('.', '_');
+      const checkbox = document.getElementById('group-' + safeId);
+      if (checkbox) checkbox.checked = false;
+    });
+    updateSelectedGroupCount();
+  }
+
+  function updateSelectedGroupCount() {
+    document.getElementById('selectedGroupCount').textContent = selectedGroups.length + ' groups selected';
+  }
+
+async function pickGroupAttachment(type) {
+    const result = await window.api.pickFile(type);
+    if (!result) return;
+    if (result.error) { alert('❌ ' + result.error); return; }
+
+    if (result.files && result.files.length > 1) {
+      groupAttachment = { type, files: result.files, fileName: result.fileName };
+      document.getElementById('grpAttachName').textContent = `📎 ${result.files.length} files selected`;
+    } else {
+      groupAttachment = { type, filePath: result.filePath, fileName: result.fileName, files: result.files };
+      document.getElementById('grpAttachName').textContent = '📎 ' + result.fileName;
+    }
+    document.querySelectorAll('#grpAttachImage, #grpAttachVideo, #grpAttachDoc').forEach(b => b.classList.remove('selected'));
+    document.getElementById('grpAttach' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('selected');
+    document.getElementById('grpAttachPreview').classList.add('show');
+  }
+  
+
+  function clearGroupAttachment() {
+    groupAttachment = null;
+    document.querySelectorAll('#grpAttachImage, #grpAttachVideo, #grpAttachDoc').forEach(b => b.classList.remove('selected'));
+    document.getElementById('grpAttachPreview').classList.remove('show');
+  }
+
+  async function sendGroupMessages() {
+    if (isGroupSending) return;
+    if (!isConnected) { alert('Please connect WhatsApp first!'); return; }
+    if (selectedGroups.length === 0) { alert('Please select at least one group!'); return; }
+
+    const message = document.getElementById('groupMessage').value.trim();
+    const delayMin = parseInt(document.getElementById('groupDelayMin').value) || 3;
+    const delayMax = Math.max(delayMin, parseInt(document.getElementById('groupDelayMax').value) || delayMin);
+
+    if (!message && !groupAttachment) { alert('Please enter a message or add an attachment!'); return; }
+
+    isGroupSending = true;
+    document.getElementById('groupLogArea').innerHTML = '';
+    document.getElementById('groupProgressFill').style.width = '0%';
+    document.getElementById('groupProgressText').textContent = 'Starting...';
+    document.getElementById('sendGroupBtn').disabled = true;
+    document.getElementById('sendGroupBtn').textContent = 'Sending...';
+    document.getElementById('stopGroupBtn').style.display = 'inline-block';
+    document.getElementById('stopGroupBtn').disabled = false;
+    document.getElementById('stopGroupBtn').textContent = '⏹ Stop';
+
+    await window.api.sendGroupMessage({
+      groups: selectedGroups,
+      message,
+      delayMin,
+      delayMax,
+      attachment: groupAttachment
+    });
+  }
+
+  async function stopGroupSending() {
+    document.getElementById('stopGroupBtn').disabled = true;
+    document.getElementById('stopGroupBtn').textContent = 'Stopping...';
+    await window.api.stopGroupSending();
+  }
+
+  window.api.onGroupMessageStatus((data) => {
+    const { name, status, index, total } = data;
+    const progress = Math.round(((index + 1) / total) * 100);
+    document.getElementById('groupProgressFill').style.width = progress + '%';
+
+    const log = document.getElementById('groupLogArea');
+
+    function finishGroupSendingUI(message) {
+      document.getElementById('sendGroupBtn').disabled = false;
+      document.getElementById('sendGroupBtn').textContent = '📤 Send to Groups';
+      document.getElementById('stopGroupBtn').style.display = 'none';
+      isGroupSending = false;
+      document.getElementById('groupProgressText').textContent = message;
+    }
+
+    if (status === 'stopped') {
+      const item = document.createElement('div');
+      item.className = 'log-item failed';
+      item.textContent = '⏹ Sending stopped — remaining groups were not messaged.';
+      log.appendChild(item);
+      log.scrollTop = log.scrollHeight;
+      finishGroupSendingUI(`Stopped by user (${index}/${total} groups sent)`);
+      return;
+    }
+
+    document.getElementById('groupProgressText').textContent = `${index + 1} of ${total} groups sent`;
+
+    const item = document.createElement('div');
+    item.className = 'log-item ' + status;
+    item.textContent = `${status === 'success' ? '✅' : '❌'} ${name}`;
+    log.appendChild(item);
+    log.scrollTop = log.scrollHeight;
+
+    if (index + 1 === total) {
+      finishGroupSendingUI(`Completed! ${index + 1} groups processed.`);
+    }
+  });
+
+  async function loadLicense() {
+    const info = await window.api.getLicenseInfo();
+    if (info) {
+      const badge = `✅ ${info.customer_name} | Expires: ${info.expiry_date}`;
+      document.getElementById('licenseBadge').textContent = badge;
+      document.getElementById('licenseBadge2').textContent = badge;
+    }
+  }
+
+  async function deactivate() {
+    if (confirm('Are you sure you want to deactivate the license?')) {
+      await window.api.deactivateLicense();
+    }
+  }
+
+  window.api.onWhatsAppStatus((status) => {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const connectedSection = document.getElementById('connectedSection');
+    const qrSection = document.getElementById('qrSection');
+
+    if (status === 'connected') {
+      dot.className = 'status-dot connected';
+      text.textContent = 'Connected';
+      isConnected = true;
+      connectedSection.style.display = 'block';
+      qrSection.style.display = 'none';
+      connectBtn.style.display = 'none';
+      disconnectBtn.style.display = 'inline-block';
+      refreshSendLimitStatus();
+    } else {
+      dot.className = 'status-dot';
+      text.textContent = 'Disconnected';
+      isConnected = false;
+      connectedSection.style.display = 'none';
+      qrSection.style.display = 'block';
+      connectBtn.style.display = 'inline-block';
+      connectBtn.disabled = false;
+      connectBtn.textContent = '🔗 Connect';
+      disconnectBtn.style.display = 'none';
+      document.getElementById('qrWaiting').style.display = 'none';
+      document.getElementById('qrImage').style.display = 'none';
+    }
+  });
+
+  window.api.onQRCode(async (qr) => {
+    const QRCode = await import('https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm');
+    const canvas = document.getElementById('qrImage');
+    canvas.style.display = 'block';
+    document.getElementById('qrWaiting').style.display = 'none';
+    QRCode.default.toCanvas(canvas, qr, { width: 220 });
+    document.getElementById('statusDot').className = 'status-dot connecting';
+    document.getElementById('statusText').textContent = 'Scan QR Code...';
+  });
+
+  async function connectWA() {
+    document.getElementById('connectBtn').disabled = true;
+    document.getElementById('connectBtn').textContent = 'Connecting...';
+    document.getElementById('qrWaiting').style.display = 'block';
+    await window.api.connectWhatsApp();
+  }
+
+  async function disconnectWA() {
+    await window.api.disconnectWhatsApp();
+  }
+
+  function countContacts() {
+    const lines = document.getElementById('contactNumbers').value.trim().split('\n').filter(l => l.trim());
+    document.getElementById('contactCount').textContent = lines.length + ' numbers';
+  }
+
+  function clearContacts() {
+    document.getElementById('contactNumbers').value = '';
+    document.getElementById('contactCount').textContent = '0 numbers';
+  }
+
+  async function importCSV() {
+    const result = await window.api.pickFile('csv');
+    if (!result) return;
+    const lines = result.content.trim().split('\n');
+    const contacts = [];
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      if (line.toLowerCase().includes('name') && line.toLowerCase().includes('number')) continue;
+      contacts.push(line);
+    }
+    document.getElementById('contactNumbers').value = contacts.join('\n');
+    document.getElementById('contactCount').textContent = contacts.length + ' numbers';
+  }
+
+  function parseContacts(raw) {
+    const parsed = raw.trim().split('\n')
+      .map(l => l.trim())
+      .filter(l => l)
+      .map(l => {
+        if (l.includes(',')) {
+          const parts = l.split(',');
+          return { name: parts[0].trim(), number: parts[1].trim() };
+        }
+        return { name: '', number: l.trim() };
+      });
+
+    // Duplicate detection — same number written twice (even with different
+    // spacing/formatting) should only be sent to once. Keep the first
+    // occurrence (and its name, if any).
+    const seen = new Set();
+    const unique = [];
+    let duplicateCount = 0;
+
+    for (const contact of parsed) {
+      const normalizedNumber = contact.number.replace(/\D/g, ''); // digits only, for comparison
+      if (!normalizedNumber) continue; // skip empty/invalid lines
+      if (seen.has(normalizedNumber)) {
+        duplicateCount++;
+        continue;
+      }
+      seen.add(normalizedNumber);
+      unique.push(contact);
+    }
+
+    if (duplicateCount > 0) {
+      alert(`⚠️ ${duplicateCount} duplicate number(s) found and removed. ${unique.length} unique contact(s) will be used.`);
+    }
+
+    return unique;
+  }
+
+ async function pickAttachment(type) {
+    const result = await window.api.pickFile(type);
+    if (!result) return;
+    if (result.error) {
+      alert('❌ ' + result.error);
+      return;
+    }
+
+    // Multiple files support
+    if (result.files && result.files.length > 1) {
+      currentAttachment = { type, files: result.files, fileName: result.fileName };
+      document.querySelectorAll('.attach-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('attach' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('selected');
+      document.getElementById('attachName').textContent = `📎 ${result.files.length} files selected`;
+      document.getElementById('attachPreview').classList.add('show');
+    } else {
+      currentAttachment = { type, filePath: result.filePath, fileName: result.fileName, files: result.files };
+      document.querySelectorAll('.attach-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('attach' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('selected');
+      document.getElementById('attachName').textContent = '📎 ' + result.fileName;
+      document.getElementById('attachPreview').classList.add('show');
+    }
+  }
+  
+
+  function clearAttachment() {
+    currentAttachment = null;
+    document.querySelectorAll('.attach-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('attachPreview').classList.remove('show');
+  }
+
+  window.api.onMessageStatus((data) => {
+    const { number, name, status, index, total } = data;
+    const progress = Math.round(((index + 1) / total) * 100);
+    document.getElementById('progressFill').style.width = progress + '%';
+
+    const log = document.getElementById('logArea');
+
+    function finishSendingUI() {
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('sendBtn').textContent = '📤 Send Messages';
+      document.getElementById('stopBtn').style.display = 'none';
+      isSending = false;
+      if (currentSession) {
+        currentSession.success = stats.success;
+        currentSession.failed = stats.failed;
+        currentSession.total = stats.total;
+        window.api.saveReport(currentSession);
+        currentSession = null;
+      }
+      refreshSendLimitStatus();
+    }
+
+    if (status === 'limit_reached') {
+      document.getElementById('progressText').textContent = `Stopped — daily send limit reached (${index}/${total} sent)`;
+      const item = document.createElement('div');
+      item.className = 'log-item failed';
+      item.textContent = '⏸️ Daily send limit reached — remaining contacts were skipped. Resume tomorrow.';
+      log.appendChild(item);
+      log.scrollTop = log.scrollHeight;
+      finishSendingUI();
+      return;
+    }
+
+    if (status === 'stopped') {
+      document.getElementById('progressText').textContent = `Stopped by user (${index}/${total} sent)`;
+      const item = document.createElement('div');
+      item.className = 'log-item failed';
+      item.textContent = '⏹ Sending stopped — remaining contacts were not messaged.';
+      log.appendChild(item);
+      log.scrollTop = log.scrollHeight;
+      finishSendingUI();
+      return;
+    }
+
+    document.getElementById('progressText').textContent = `${index + 1} of ${total} sent`;
+
+    stats.total = index + 1;
+    if (status === 'success') stats.success++;
+    else stats.failed++;
+
+    document.getElementById('statTotal').textContent = stats.total;
+    document.getElementById('statSuccess').textContent = stats.success;
+    document.getElementById('statFailed').textContent = stats.failed;
+
+    const item = document.createElement('div');
+    item.className = 'log-item ' + status;
+    item.textContent = `${status === 'success' ? '✅' : '❌'} ${name ? name + ' - ' : ''}${number}`;
+    log.appendChild(item);
+    log.scrollTop = log.scrollHeight;
+
+    if (currentSession) {
+      currentSession.details.push({ number, name, status });
+    }
+
+    if (index + 1 === total) {
+      finishSendingUI();
+    }
+  });
+
+  async function refreshSendLimitStatus() {
+    const el = document.getElementById('sendLimitStatus');
+    if (!el) return;
+    try {
+      const status = await window.api.getSendLimitStatus();
+      if (status && status.success) {
+        el.textContent = `📊 Today: ${status.todayCount} sent · ${status.remaining} remaining of ${status.dailyLimit} daily limit (warm-up)`;
+      }
+    } catch (err) {
+      // status is a nice-to-have, ignore failures silently
+    }
+  }
+
+  async function sendMessages() {
+    if (isSending) return;
+    if (!isConnected) { alert('Please connect WhatsApp first!'); return; }
+    const numbersRaw = document.getElementById('contactNumbers').value.trim();
+    const message = document.getElementById('messageText').value.trim();
+    const delayMin = parseInt(document.getElementById('delayMin').value) || 3;
+    const delayMax = Math.max(delayMin, parseInt(document.getElementById('delayMax').value) || delayMin);
+    if (!numbersRaw) { alert('Please enter at least one number!'); return; }
+    if (!message && !currentAttachment) { alert('Please enter a message or add an attachment!'); return; }
+    const contacts = parseContacts(numbersRaw);
+    isSending = true;
+    stats = { total: 0, success: 0, failed: 0 };
+    currentSession = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+      total: contacts.length,
+      success: 0,
+      failed: 0,
+      details: []
+    };
+    document.getElementById('logArea').innerHTML = '';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressText').textContent = 'Starting...';
+    document.getElementById('sendBtn').disabled = true;
+    document.getElementById('sendBtn').textContent = 'Sending...';
+    document.getElementById('stopBtn').style.display = 'inline-block';
+    document.getElementById('stopBtn').disabled = false;
+    document.getElementById('stopBtn').textContent = '⏹ Stop';
+    await window.api.sendMessage({ contacts, message, delayMin, delayMax, attachment: currentAttachment });
+  }
+
+  async function stopSending() {
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('stopBtn').textContent = 'Stopping...';
+    await window.api.stopSending();
+  }
+
+  async function loadReports() {
+    allReports = await window.api.getReports() || [];
+    reportsPage = 1;
+    renderReportsPage();
+  }
+
+  function renderReportsPage() {
+    const container = document.getElementById('reportList');
+
+    if (!allReports || allReports.length === 0) {
+      container.innerHTML = '<p style="color:#888; font-size:13px;">No reports found.</p>';
+      return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(allReports.length / REPORTS_PER_PAGE));
+    if (reportsPage > totalPages) reportsPage = totalPages;
+    if (reportsPage < 1) reportsPage = 1;
+
+    const startIdx = (reportsPage - 1) * REPORTS_PER_PAGE;
+    const pageReports = allReports.slice(startIdx, startIdx + REPORTS_PER_PAGE);
+
+    let html = `<table class="report-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Message</th>
+          <th>Total</th>
+          <th>Successful</th>
+          <th>Failed</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>`;
+    for (const r of pageReports) {
+      html += `<tr>
+        <td>${r.date}</td>
+        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r.message}</td>
+        <td>${r.total}</td>
+        <td><span class="badge badge-success">${r.success}</span></td>
+        <td><span class="badge badge-failed">${r.failed}</span></td>
+        <td>
+          <button class="btn btn-info btn-sm" onclick="viewReport('${r.id}')">Details</button>
+          <button class="btn btn-success btn-sm" onclick="exportExcel('${r.id}')" style="margin-left:4px;">📥 Excel</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')" style="margin-left:4px;">Delete</button>
+        </td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+
+    html += `<div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px;">
+      <button class="btn btn-sm" onclick="goToReportsPage(${reportsPage - 1})" ${reportsPage <= 1 ? 'disabled' : ''}>◀ Prev</button>
+      <span style="font-size:13px; color:#888;">Page ${reportsPage} of ${totalPages} (${allReports.length} total)</span>
+      <button class="btn btn-sm" onclick="goToReportsPage(${reportsPage + 1})" ${reportsPage >= totalPages ? 'disabled' : ''}>Next ▶</button>
+    </div>`;
+
+    container.innerHTML = html;
+  }
+
+  function goToReportsPage(page) {
+    reportsPage = page;
+    renderReportsPage();
+  }
+
+  async function exportExcel(id) {
+    const result = await window.api.exportReportExcel(id);
+    if (result && result.success) {
+      alert('✅ Excel file saved successfully!');
+    } else {
+      alert('❌ Failed to export report.');
+    }
+  }
+
+  async function viewReport(id) {
+    const reports = await window.api.getReports();
+    const report = reports.find(r => r.id === id);
+    if (!report) return;
+    document.getElementById('reportDetailTitle').textContent = `Report — ${report.date}`;
+    let html = '';
+    for (const d of report.details) {
+      html += `<div class="log-item ${d.status}">${d.status === 'success' ? '✅' : '❌'} ${d.name ? d.name + ' - ' : ''}${d.number}</div>`;
+    }
+    document.getElementById('reportDetailLog').innerHTML = html;
+    document.getElementById('reportDetail').classList.add('show');
+    document.getElementById('reportDetail').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function closeReportDetail() {
+    document.getElementById('reportDetail').classList.remove('show');
+  }
+
+  async function deleteReport(id) {
+    if (confirm('Are you sure you want to delete this report?')) {
+      await window.api.deleteReport(id);
+      loadReports();
+      closeReportDetail();
+    }
+  }
+
+  // ─── Chats ───────────────────────────────────────────────
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  function formatChatTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  const avatarLoadedCache = {}; // jid -> data-URI string | null (fetched this session)
+
+  function applyAvatar(jid, dataUri) {
+    if (!dataUri) return; // no picture available — keep the initials placeholder
+    document.querySelectorAll(`[data-avatar-jid="${CSS.escape(jid)}"]`).forEach(el => {
+      el.style.backgroundImage = `url(${dataUri})`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.textContent = '';
+    });
+  }
+
+  function ensureAvatar(jid) {
+    if (avatarLoadedCache[jid] !== undefined) {
+      applyAvatar(jid, avatarLoadedCache[jid]);
+      return;
+    }
+    window.api.getChatAvatar(jid).then(result => {
+      const uri = (result && result.success && result.avatar)
+        ? `data:${result.avatar.mimetype};base64,${result.avatar.data}`
+        : null;
+      avatarLoadedCache[jid] = uri;
+      applyAvatar(jid, uri);
+    });
+  }
+
+  async function loadChatList() {
+    const container = document.getElementById('chatListArea');
+    if (!isConnected) {
+      container.innerHTML = '<p style="color:#888; font-size:13px; padding:16px;">Connect WhatsApp first.</p>';
+      return;
+    }
+    const result = await window.api.getChats();
+    if (!result.success) {
+      container.innerHTML = `<p style="color:#e74c3c; font-size:13px; padding:16px;">❌ ${result.message}</p>`;
+      return;
+    }
+    allChats = result.chats;
+    renderChatList();
+  }
+
+  function renderChatList() {
+    const container = document.getElementById('chatListArea');
+    const searchInput = document.getElementById('chatSearchInput');
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    const source = allChats || [];
+    const filtered = query
+      ? source.filter(c => (c.name || c.jid.split('@')[0]).toLowerCase().includes(query))
+      : source;
+
+    if (filtered.length === 0) {
+      container.innerHTML = query
+        ? '<p style="color:#888; font-size:13px; padding:16px;">No chats match your search.</p>'
+        : '<p style="color:#888; font-size:13px; padding:16px;">No chats yet. New chats will appear here as messages come in.</p>';
+      return;
+    }
+    let html = '';
+    for (const c of filtered) {
+      const isActive = c.jid === currentChatJid;
+      const displayName = c.name || c.jid.split('@')[0];
+      html += `
+        <div onclick="openChat('${c.jid}')" style="display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #f5f5f5; cursor:pointer; ${isActive ? 'background:#f0f9f6;' : ''}">
+          <div class="chat-avatar" data-avatar-jid="${c.jid}" style="width:40px; height:40px; border-radius:50%; background:#128c7e; color:white; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; flex-shrink:0;">${getInitials(displayName)}</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+              <span style="font-size:13px; font-weight:600; color:#333;">${escapeHtml(displayName)}</span>
+              <span style="font-size:11px; color:#aaa;">${formatChatTime(c.lastMessageTime)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+              <span style="font-size:12px; color:#888; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${escapeHtml(c.lastMessageText || '')}</span>
+              ${c.unreadCount > 0 ? `<span style="background:#25d366; color:white; font-size:10px; font-weight:700; border-radius:10px; padding:2px 7px;">${c.unreadCount}</span>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }
+    container.innerHTML = html;
+    filtered.forEach(c => ensureAvatar(c.jid));
+  }
+
+  async function startNewChat() {
+    const raw = prompt('Enter phone number with country code (digits only), e.g. 919876543210:');
+    if (!raw) return;
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) { alert('Please enter a valid phone number.'); return; }
+    const jid = digits + '@s.whatsapp.net';
+    await openChat(jid);
+  }
+
+  async function openChat(jid) {
+    currentChatJid = jid;
+    renderChatList(); // re-render to highlight the selected chat
+
+    const chat = allChats.find(c => c.jid === jid);
+    const displayName = chat ? (chat.name || jid.split('@')[0]) : jid;
+    document.getElementById('chatConvName').textContent = displayName;
+    const headerAvatar = document.getElementById('chatConvAvatar');
+    headerAvatar.dataset.avatarJid = jid;
+    headerAvatar.style.backgroundImage = '';
+    headerAvatar.textContent = getInitials(displayName);
+    ensureAvatar(jid);
+
+    document.getElementById('chatMessagesArea').innerHTML = '<p style="color:#888; font-size:13px;">Loading...</p>';
+
+    await window.api.markChatRead(jid);
+    if (chat) chat.unreadCount = 0;
+    renderChatList();
+
+    const result = await window.api.getChatMessages(jid);
+    if (!result.success) {
+      document.getElementById('chatMessagesArea').innerHTML = `<p style="color:#e74c3c; font-size:13px;">❌ ${result.message}</p>`;
+      return;
+    }
+    await renderChatMessages(result.messages);
+  }
+
+  async function renderChatMessages(messages) {
+    const area = document.getElementById('chatMessagesArea');
+    if (!messages || messages.length === 0) {
+      area.innerHTML = '<p style="color:#888; font-size:13px;">No messages yet.</p>';
+      return;
+    }
+    area.innerHTML = '';
+    for (const m of messages) {
+      area.appendChild(await buildMessageBubble(m));
+    }
+    area.scrollTop = area.scrollHeight;
+  }
+
+  // Adds a message bubble to the DOM, but only if one for this message id
+  // isn't already there (the same message can arrive twice: once from our
+  // own optimistic "just sent" update, once from WhatsApp's echo event).
+  // If it's already there and the new version has an image the old one
+  // doesn't, the bubble is rebuilt so the image appears.
+  async function upsertMessageBubble(m) {
+    const area = document.getElementById('chatMessagesArea');
+    const existing = area.querySelector(`[data-msg-id="${CSS.escape(m.id)}"]`);
+
+    if (existing) {
+      if (m.mediaFile && !existing.dataset.hasMedia) {
+        const rebuilt = await buildMessageBubble(m);
+        existing.replaceWith(rebuilt);
+      }
+      return;
+    }
+
+    const bubble = await buildMessageBubble(m);
+    area.appendChild(bubble);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  async function buildMessageBubble(m) {
+    const bubble = document.createElement('div');
+    bubble.dataset.msgId = m.id;
+    bubble.style.cssText = `max-width:70%; align-self:${m.fromMe ? 'flex-end' : 'flex-start'}; background:${m.fromMe ? '#dcf8c6' : 'white'}; border-radius:10px; padding:8px 12px; font-size:13px; color:#333; box-shadow:0 1px 2px rgba(0,0,0,0.08);`;
+
+    if (m.type === 'image') {
+      if (m.mediaFile) {
+        const mediaResult = await window.api.getChatMedia(m.mediaFile);
+        if (mediaResult.success && mediaResult.media) {
+          const img = document.createElement('img');
+          img.src = `data:${mediaResult.media.mimetype};base64,${mediaResult.media.data}`;
+          img.style.cssText = 'max-width:100%; border-radius:6px; display:block; margin-bottom:4px;';
+          bubble.appendChild(img);
+          bubble.dataset.hasMedia = '1';
+        } else {
+          bubble.appendChild(document.createTextNode('📷 [Photo unavailable]'));
+        }
+      } else {
+        bubble.appendChild(document.createTextNode('📷 [Photo — not downloaded]'));
+      }
+      if (m.text) {
+        const caption = document.createElement('div');
+        caption.textContent = m.text;
+        caption.style.marginTop = '4px';
+        bubble.appendChild(caption);
+      }
+    } else {
+      bubble.textContent = m.text || '';
+    }
+
+    const time = document.createElement('div');
+    time.textContent = formatChatTime(m.timestamp);
+    time.style.cssText = 'font-size:10px; color:#999; margin-top:4px; text-align:right;';
+    bubble.appendChild(time);
+
+    return bubble;
+  }
+
+  async function pickChatAttachment() {
+    const result = await window.api.pickFile('image');
+    if (!result) return;
+    if (result.error) { alert('❌ ' + result.error); return; }
+    chatAttachment = { type: 'image', filePath: result.filePath, fileName: result.fileName };
+    document.getElementById('chatAttachName').textContent = '📎 ' + result.fileName;
+    document.getElementById('chatAttachPreview').style.display = 'flex';
+  }
+
+  function clearChatAttachment() {
+    chatAttachment = null;
+    document.getElementById('chatAttachPreview').style.display = 'none';
+  }
+
+  async function sendChatReply() {
+    if (!currentChatJid) { alert('Select a chat first!'); return; }
+    const input = document.getElementById('chatReplyText');
+    const text = input.value.trim();
+    if (!text && !chatAttachment) return;
+
+    document.getElementById('chatSendBtn').disabled = true;
+
+    const result = await window.api.sendChatMessage({ jid: currentChatJid, text, attachment: chatAttachment });
+
+    document.getElementById('chatSendBtn').disabled = false;
+
+    if (!result.success) {
+      alert('❌ Failed to send: ' + result.message);
+      return;
+    }
+
+    input.value = '';
+    clearChatAttachment();
+
+    await upsertMessageBubble(result.message);
+
+    loadChatList();
+  }
+
+  window.api.onChatNewMessage(async (data) => {
+    const { jid, message } = data;
+
+    // Refresh the chat list order/preview/unread badge regardless of
+    // which chat is currently open.
+    await loadChatList();
+
+    if (jid === currentChatJid) {
+      await window.api.markChatRead(jid);
+      const chat = allChats.find(c => c.jid === jid);
+      if (chat) { chat.unreadCount = 0; renderChatList(); }
+      await upsertMessageBubble(message);
+    }
+  });
+
+  window.api.onChatHistorySynced(() => {
+    // Only auto-refresh on the first sync after connecting, so we don't
+    // interrupt/reset the view if the user is actively chatting later.
+    if (chatHistorySyncedOnce) return;
+    chatHistorySyncedOnce = true;
+    loadChatList();
+  });
+
+  window.api.onChatMessageDeleted((data) => {
+    const { jid, id, all } = data;
+    if (jid !== currentChatJid) return;
+
+    if (all) {
+      document.getElementById('chatMessagesArea').innerHTML = '<p style="color:#888; font-size:13px;">No messages yet.</p>';
+      return;
+    }
+    const bubble = document.querySelector(`#chatMessagesArea [data-msg-id="${CSS.escape(id)}"]`);
+    if (bubble) bubble.remove();
+  });
+
+  loadLicense();
+  refreshSendLimitStatus();
+</script>
+</body>
+</html>

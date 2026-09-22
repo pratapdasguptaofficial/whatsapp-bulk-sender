@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #075e54, #128c7e);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .logo { font-size: 48px; margin-bottom: 10px; }
+    h2 { color: #075e54; font-size: 22px; margin-bottom: 6px; }
+    p.subtitle { color: #888; font-size: 13px; margin-bottom: 30px; }
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      text-align: center;
+      letter-spacing: 2px;
+      outline: none;
+      transition: border 0.3s;
+    }
+    input:focus { border-color: #128c7e; }
+    button {
+      width: 100%;
+      padding: 13px;
+      background: #075e54;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: background 0.3s;
+    }
+    button:hover { background: #128c7e; }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    .message {
+      margin-top: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    .message.error { background: #fdecea; color: #c0392b; display: block; }
+    .message.success { background: #e8f5e9; color: #27ae60; display: block; }
+    .footer { margin-top: 24px; font-size: 11px; color: #bbb; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">💬</div>
+    <h2>WA Bulk Sender</h2>
+    <p class="subtitle">Enter your License Key to activate</p>
+    <input type="text" id="licenseKey" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="50" />
+    <button id="activateBtn" onclick="activate()">Activate</button>
+    <div class="message" id="message"></div>
+    <div class="footer">PSP Softech &copy; 2026</div>
+  </div>
+  <script>
+    async function activate() {
+      const key = document.getElementById('licenseKey').value.trim();
+      const btn = document.getElementById('activateBtn');
+      const msg = document.getElementById('message');
+      if (!key) {
+        msg.className = 'message error';
+        msg.textContent = 'Please enter your License Key.';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+      msg.className = 'message';
+      msg.textContent = '';
+      const result = await window.api.verifyLicense(key);
+      if (result.success) {
+        msg.className = 'message success';
+        msg.textContent = 'Welcome ' + result.name + '! Activation successful.';
+      } else {
+        msg.className = 'message error';
+        msg.textContent = result.message || 'Invalid License Key.';
+        btn.disabled = false;
+        btn.textContent = 'Activate';
+      }
+    }
+    document.getElementById('licenseKey').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') activate();
+    });
+  </script>
+</body>
+</html>
